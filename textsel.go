@@ -1,4 +1,4 @@
-// A `tview.TextView` widget that supports selecting text with the keyboard.
+// Package textsel provides a `tview.TextView` widget that supports selecting text with the keyboard.
 package textsel
 
 import (
@@ -141,10 +141,12 @@ func (ts *TextSel) GetSelectedText() string {
 	return strings.Join(selectedLines, "\n")
 }
 
+// Helper function to convert tcell.Color to a hex string.
 func colorToHex(color tcell.Color) string {
 	return fmt.Sprintf("#%06X", color.Hex())
 }
 
+// Helper function to get the selection range in the text.
 func (ts *TextSel) getSelectionRange() (int, int, int, int) {
 	startRow, startCol := ts.selectionStartRow, ts.selectionStartCol
 	endRow, endCol := ts.selectionEndRow, ts.selectionEndCol
@@ -156,6 +158,7 @@ func (ts *TextSel) getSelectionRange() (int, int, int, int) {
 	return startRow, startCol, endRow, endCol
 }
 
+// Moves the cursor up by one row.
 func (ts *TextSel) moveUp() {
 	if ts.cursorRow > 0 {
 		ts.cursorRow--
@@ -170,6 +173,7 @@ func (ts *TextSel) moveUp() {
 	}
 }
 
+// Moves the cursor down by one row.
 func (ts *TextSel) moveDown() {
 	lines := strings.Split(ts.text, "\n")
 	if ts.cursorRow < len(lines)-1 {
@@ -187,6 +191,7 @@ func (ts *TextSel) moveDown() {
 	}
 }
 
+// Moves the cursor left by one column.
 func (ts *TextSel) moveLeft() {
 	if ts.cursorCol > 0 {
 		ts.cursorCol--
@@ -200,6 +205,7 @@ func (ts *TextSel) moveLeft() {
 	}
 }
 
+// Moves the cursor right by one column.
 func (ts *TextSel) moveRight() {
 	if ts.cursorCol < len(ts.getCurrentLine())-1 {
 		ts.cursorCol++
@@ -213,6 +219,7 @@ func (ts *TextSel) moveRight() {
 	}
 }
 
+// Handles key events for moving the cursor and selecting text.
 func (ts *TextSel) handleKeyEvents(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyUp:
@@ -267,6 +274,7 @@ func (ts *TextSel) handleKeyEvents(event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
+// Determines if the cursor location is within the selection.
 func (ts *TextSel) cursorLocationIsWithinSelection() bool {
 	if !ts.isSelecting {
 		return false
@@ -283,6 +291,7 @@ func (ts *TextSel) cursorLocationIsWithinSelection() bool {
 	return isCursorWithinRange(cursor, start, end, lines)
 }
 
+// Converts a cursor position to an absolute position in the text.
 func toAbsolutePosition(point [2]int, lines []string) int {
 	row, col := point[0], point[1]
 	absolutePos := 0
@@ -293,6 +302,7 @@ func toAbsolutePosition(point [2]int, lines []string) int {
 	return absolutePos
 }
 
+// Determines if the cursor is within the specified range in the text.
 func isCursorWithinRange(cursor, start, end [2]int, lines []string) bool {
 	cursorAbs := toAbsolutePosition(cursor, lines)
 	startAbs := toAbsolutePosition(start, lines)
@@ -301,6 +311,7 @@ func isCursorWithinRange(cursor, start, end [2]int, lines []string) bool {
 	return startAbs <= cursorAbs && cursorAbs <= endAbs
 }
 
+// Highlights the cursor position and selected text in the widget.
 func (ts *TextSel) highlightCursor() {
 	lines := strings.Split(ts.text, "\n")
 	originalLines := strings.Split(ts.text, "\n")
@@ -383,6 +394,7 @@ func (ts *TextSel) highlightCursor() {
 	ts.TextView.SetText(strings.Join(lines, "\n"))
 }
 
+// Retrieves the current line the cursor is on.
 func (ts *TextSel) getCurrentLine() string {
 	lines := strings.Split(ts.text, "\n")
 
