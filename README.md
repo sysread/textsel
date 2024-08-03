@@ -1,4 +1,6 @@
-# textsel
+# TextSel
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/sysread/textsel.svg)](https://pkg.go.dev/github.com/sysread/textsel#section-readme)
 
 `textsel` is a Go package that extends the `tview.TextView` widget to include
 cursor movement and text selection capabilities. It allows users to navigate
