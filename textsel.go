@@ -13,8 +13,6 @@ import (
 type TextSel struct {
 	*tview.TextView
 
-	text string
-
 	// Cursor position
 	cursorRow, cursorCol int
 
@@ -48,9 +46,11 @@ func NewTextSel() *TextSel {
 		SetWordWrap(true)
 
 	ts := &TextSel{
-		TextView:               textView,
-		cursorRow:              0,
-		cursorCol:              0,
+		TextView:  textView,
+		cursorRow: 0,
+		cursorCol: 0,
+
+		// colors
 		defaultColor:           fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimaryTextColor), colorToHex(tview.Styles.PrimitiveBackgroundColor)),
 		cursorColor:            fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimitiveBackgroundColor), colorToHex(tview.Styles.PrimaryTextColor)),
 		selectionColor:         fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimitiveBackgroundColor), colorToHex(tview.Styles.SecondaryTextColor)),
@@ -73,7 +73,6 @@ func NewTextSel() *TextSel {
 //
 //	textSel.SetText("New text content")
 func (ts *TextSel) SetText(text string) *TextSel {
-	ts.text = text
 	ts.TextView.SetText(text)
 	ts.highlightCursor()
 
@@ -121,7 +120,7 @@ func (ts *TextSel) GetSelectedText() string {
 
 	startRow, startCol, endRow, endCol := ts.getSelectionRange()
 
-	lines := strings.Split(ts.text, "\n")
+	lines := strings.Split(ts.GetText(true), "\n")
 	selectedLines := []string{}
 
 	for row := startRow; row <= endRow; row++ {
@@ -175,7 +174,7 @@ func (ts *TextSel) moveUp() {
 
 // Moves the cursor down by one row.
 func (ts *TextSel) moveDown() {
-	lines := strings.Split(ts.text, "\n")
+	lines := strings.Split(ts.GetText(true), "\n")
 	if ts.cursorRow < len(lines)-1 {
 		ts.cursorRow++
 		if ts.cursorCol > len(ts.getCurrentLine()) {
@@ -209,7 +208,7 @@ func (ts *TextSel) moveLeft() {
 func (ts *TextSel) moveRight() {
 	if ts.cursorCol < len(ts.getCurrentLine())-1 {
 		ts.cursorCol++
-	} else if ts.cursorRow < len(strings.Split(ts.text, "\n"))-1 {
+	} else if ts.cursorRow < len(strings.Split(ts.GetText(true), "\n"))-1 {
 		ts.cursorRow++
 		ts.cursorCol = 0
 	}
@@ -286,7 +285,7 @@ func (ts *TextSel) cursorLocationIsWithinSelection() bool {
 	end := [2]int{endRow, endCol}
 	cursor := [2]int{ts.cursorRow, ts.cursorCol}
 
-	lines := strings.Split(ts.text, "\n")
+	lines := strings.Split(ts.GetText(true), "\n")
 
 	return isCursorWithinRange(cursor, start, end, lines)
 }
@@ -313,8 +312,9 @@ func isCursorWithinRange(cursor, start, end [2]int, lines []string) bool {
 
 // Highlights the cursor position and selected text in the widget.
 func (ts *TextSel) highlightCursor() {
-	lines := strings.Split(ts.text, "\n")
-	originalLines := strings.Split(ts.text, "\n")
+	text := ts.GetText(true)
+	lines := strings.Split(text, "\n")
+	originalLines := strings.Split(text, "\n")
 
 	if ts.cursorRow >= len(lines) {
 		return
@@ -396,7 +396,7 @@ func (ts *TextSel) highlightCursor() {
 
 // Retrieves the current line the cursor is on.
 func (ts *TextSel) getCurrentLine() string {
-	lines := strings.Split(ts.text, "\n")
+	lines := strings.Split(ts.GetText(true), "\n")
 
 	if ts.cursorRow >= len(lines) {
 		return ""
