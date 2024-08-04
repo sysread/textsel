@@ -3,6 +3,7 @@ package textsel
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -60,6 +61,35 @@ func NewTextSel() *TextSel {
 	// Handle key events for moving the cursor and selecting text
 	ts.SetInputCapture(ts.handleKeyEvents)
 
+	return ts
+}
+
+func (ts *TextSel) debug(format string, args ...interface{}) {
+	file, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	defer file.Close()
+	line := fmt.Sprintf(format, args...)
+	file.WriteString(line + "\n")
+}
+
+func (ts *TextSel) debugColors() *TextSel {
+	ts.debug("          defaultColor: %s", ts.defaultColor)
+	ts.debug("           cursorColor: %s", ts.cursorColor)
+	ts.debug("        selectionColor: %s", ts.selectionColor)
+	ts.debug("cursorInSelectionColor: %s", ts.cursorInSelectionColor)
+	return ts
+}
+
+func (ts *TextSel) debugCursor() *TextSel {
+	ts.debug("Cursor: (%d, %d)", ts.cursorRow, ts.cursorCol)
+	return ts
+}
+
+func (ts *TextSel) debugSelection() *TextSel {
+	if ts.isSelecting {
+		ts.debug("Selection range: (%d, %d) - (%d, %d)", ts.selectionStartRow, ts.selectionStartCol, ts.selectionEndRow, ts.selectionEndCol)
+	} else {
+		ts.debug("No selection")
+	}
 	return ts
 }
 
@@ -127,12 +157,17 @@ func (ts *TextSel) GetSelectedText() string {
 	for row := startRow; row <= endRow; row++ {
 		line := lines[row]
 
+		lastCol := endCol + 1
+		if lastCol > len(line) {
+			lastCol = len(line) - 1
+		}
+
 		if row == startRow && row == endRow {
-			selectedLines = append(selectedLines, line[startCol:endCol+1])
+			selectedLines = append(selectedLines, line[startCol:lastCol])
 		} else if row == startRow {
 			selectedLines = append(selectedLines, line[startCol:])
 		} else if row == endRow {
-			selectedLines = append(selectedLines, line[:endCol+1])
+			selectedLines = append(selectedLines, line[:lastCol])
 		} else {
 			selectedLines = append(selectedLines, line)
 		}
@@ -313,85 +348,63 @@ func isCursorWithinRange(cursor, start, end [2]int, lines []string) bool {
 
 // Highlights the cursor position and selected text in the widget.
 func (ts *TextSel) highlightCursor() {
-	lines := strings.Split(ts.text, "\n")
-	originalLines := strings.Split(ts.text, "\n")
+	text := ts.text
+	startRow, startCol, endRow, endCol := ts.getSelectionRange()
 
-	if ts.cursorRow >= len(lines) {
-		return
-	}
+	buf := strings.Builder{}
+	sel := false
+	row := 0
+	col := 0
 
-	// Reset the entire text to its original form
-	for i := range lines {
-		lines[i] = originalLines[i]
-	}
+	for idx := 0; idx < len(text); idx++ {
+		char := text[idx]
 
-	// Apply selection highlighting
-	if ts.isSelecting {
-		startRow, startCol, endRow, endCol := ts.getSelectionRange()
+		// Mark the start of the selection
+		if ts.isSelecting && row == startRow && col == startCol {
+			sel = true
+			buf.WriteString(ts.selectionColor)
+		}
 
-		for row := startRow; row <= endRow; row++ {
-			if row >= len(lines) {
-				continue
-			}
-
-			line := lines[row]
-
-			// Handle empty lines
-			if len(line) == 0 {
-				lines[row] = fmt.Sprintf("%s %s", ts.selectionColor, ts.defaultColor)
-				continue
-			}
-
-			if row == startRow && row == endRow {
-				lines[row] = fmt.Sprintf("%s%s%s%s%s", line[:startCol], ts.selectionColor, line[startCol:endCol+1], ts.defaultColor, line[endCol+1:])
-			} else if row == startRow {
-				lines[row] = fmt.Sprintf("%s%s%s%s", line[:startCol], ts.selectionColor, line[startCol:], ts.defaultColor)
-			} else if row == endRow {
-				lines[row] = fmt.Sprintf("%s%s%s%s", ts.selectionColor, line[:endCol+1], ts.defaultColor, line[endCol+1:])
+		// Highlight the cursor position
+		if row == ts.cursorRow && col == ts.cursorCol {
+			if sel {
+				buf.WriteString(ts.cursorInSelectionColor)
 			} else {
-				lines[row] = fmt.Sprintf("%s%s%s", ts.selectionColor, line, ts.defaultColor)
+				buf.WriteString(ts.cursorColor)
 			}
+
+			// If the cursor is on an empty line ("\n"), add a space to make it
+			// visible.
+			if char == '\n' {
+				buf.WriteString(" \n")
+			} else {
+				buf.WriteString(string(char))
+			}
+
+			if sel {
+				buf.WriteString(ts.selectionColor)
+			} else {
+				buf.WriteString(ts.defaultColor)
+			}
+		} else {
+			buf.WriteString(string(char))
+		}
+
+		// Mark the end of the selection
+		if row == endRow && col == endCol {
+			sel = false
+			buf.WriteString(ts.defaultColor)
+		}
+
+		if char == '\n' {
+			row++
+			col = 0
+		} else {
+			col++
 		}
 	}
 
-	// Highlight the cursor position
-	line := lines[ts.cursorRow]
-	cursorCol := ts.cursorCol
-
-	// Adjust cursorCol if selecting by adding the length of the selection color
-	if ts.isSelecting {
-		cursorCol += len(ts.selectionColor)
-	}
-
-	// Adjust cursorCol if it is past the end of the line
-	if cursorCol > len(line) {
-		cursorCol = len(line)
-	}
-
-	// Alter the cursor color if the cursor is within the selection
-	cursorColor := ts.cursorColor
-	resetColor := ts.defaultColor
-	if ts.cursorLocationIsWithinSelection() {
-		cursorColor = ts.cursorInSelectionColor
-		resetColor = ts.selectionColor
-	}
-
-	if len(line) == 0 {
-		// If the line is empty, set the cursor at the start of the line
-		lines[ts.cursorRow] = fmt.Sprintf("%s %s", cursorColor, resetColor)
-	} else if cursorCol >= len(line) {
-		// Ensure the cursor stays within the line boundaries
-		ts.cursorCol = len(line) - 1
-		line = lines[ts.cursorRow]
-		highlightedText := fmt.Sprintf("%s%s%c%s%s", line[:cursorCol], cursorColor, line[cursorCol], resetColor, "")
-		lines[ts.cursorRow] = highlightedText
-	} else {
-		// Highlight the character at the cursor position
-		highlightedText := fmt.Sprintf("%s%s%c%s%s", line[:cursorCol], cursorColor, line[cursorCol], resetColor, line[cursorCol+1:])
-		lines[ts.cursorRow] = highlightedText
-	}
-
-	ts.TextView.SetText(strings.Join(lines, "\n"))
+	ts.TextView.SetText(buf.String())
 }
 
 // Retrieves the current line the cursor is on.
