@@ -206,6 +206,8 @@ func (ts *TextSel) moveUp() {
 			ts.selectionEndCol = ts.cursorCol
 		}
 	}
+
+	ts.highlightCursor()
 }
 
 // Moves the cursor down by one row.
@@ -224,6 +226,8 @@ func (ts *TextSel) moveDown() {
 			ts.selectionEndCol = ts.cursorCol
 		}
 	}
+
+	ts.highlightCursor()
 }
 
 // Moves the cursor left by one column.
@@ -234,10 +238,13 @@ func (ts *TextSel) moveLeft() {
 		ts.cursorRow--
 		ts.cursorCol = len(ts.getCurrentLine()) - 1 // Adjust to the last valid column in the previous row
 	}
+
 	if ts.isSelecting {
 		ts.selectionEndRow = ts.cursorRow
 		ts.selectionEndCol = ts.cursorCol
 	}
+
+	ts.highlightCursor()
 }
 
 // Moves the cursor right by one column.
@@ -248,10 +255,50 @@ func (ts *TextSel) moveRight() {
 		ts.cursorRow++
 		ts.cursorCol = 0
 	}
+
 	if ts.isSelecting {
 		ts.selectionEndRow = ts.cursorRow
 		ts.selectionEndCol = ts.cursorCol
 	}
+
+	ts.highlightCursor()
+}
+
+func (ts *TextSel) moveToStartOfLine() {
+	ts.cursorCol = 0
+	if ts.isSelecting {
+		ts.selectionEndCol = ts.cursorCol
+	}
+
+	ts.highlightCursor()
+}
+
+func (ts *TextSel) moveToEndOfLine() {
+	ts.cursorCol = len(ts.getCurrentLine()) - 1
+	if ts.isSelecting {
+		ts.selectionEndCol = ts.cursorCol
+	}
+
+	ts.highlightCursor()
+}
+
+func (ts *TextSel) startSelection() {
+	ts.isSelecting = true
+	ts.selectionStartRow = ts.cursorRow
+	ts.selectionStartCol = ts.cursorCol
+	ts.selectionEndRow = ts.cursorRow
+	ts.selectionEndCol = ts.cursorCol
+}
+
+func (ts *TextSel) finishSelection() {
+	// Call the selectFunc callback with the selected text
+	if ts.selectFunc != nil {
+		ts.selectFunc(ts.GetSelectedText())
+	}
+
+	ts.isSelecting = false
+	ts.selectionEndRow = ts.cursorRow
+	ts.selectionEndCol = ts.cursorCol
 }
 
 // Handles key events for moving the cursor and selecting text.
@@ -266,24 +313,11 @@ func (ts *TextSel) handleKeyEvents(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyRight:
 		ts.moveRight()
 	case tcell.KeyEnter:
-		// Call the selectFunc callback with the selected text
-		if ts.selectFunc != nil {
-			ts.selectFunc(ts.GetSelectedText())
-		}
-
-		// Clear the selection
-		ts.isSelecting = false
-		ts.selectionEndRow = ts.cursorRow
-		ts.selectionEndCol = ts.cursorCol
+		ts.finishSelection()
 	case tcell.KeyRune:
 		switch event.Rune() {
 		case ' ':
-			// Start selection
-			ts.isSelecting = true
-			ts.selectionStartRow = ts.cursorRow
-			ts.selectionStartCol = ts.cursorCol
-			ts.selectionEndRow = ts.cursorRow
-			ts.selectionEndCol = ts.cursorCol
+			ts.startSelection()
 		case 'k':
 			ts.moveUp()
 		case 'j':
@@ -293,19 +327,12 @@ func (ts *TextSel) handleKeyEvents(event *tcell.EventKey) *tcell.EventKey {
 		case 'l':
 			ts.moveRight()
 		case '^':
-			ts.cursorCol = 0
-			if ts.isSelecting {
-				ts.selectionEndCol = ts.cursorCol
-			}
+			ts.moveToStartOfLine()
 		case '$':
-			ts.cursorCol = len(ts.getCurrentLine()) - 1
-			if ts.isSelecting {
-				ts.selectionEndCol = ts.cursorCol
-			}
+			ts.moveToEndOfLine()
 		}
 	}
 
-	ts.highlightCursor()
 	return event
 }
 
