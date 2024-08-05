@@ -70,6 +70,7 @@ func colorToHex(color tcell.Color) string {
 	return fmt.Sprintf("#%06X", color.Hex())
 }
 
+// Debugging function to write to `debug.log`.
 func (ts *TextSel) debug(format string, args ...interface{}) {
 	file, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	defer file.Close()
@@ -77,6 +78,8 @@ func (ts *TextSel) debug(format string, args ...interface{}) {
 	file.WriteString(line + "\n")
 }
 
+// Debugging function to log the color codes being used for the cursor and
+// selection highlighting.
 func (ts *TextSel) debugColors() *TextSel {
 	ts.debug("          defaultColor: %s", ts.defaultColor)
 	ts.debug("           cursorColor: %s", ts.cursorColor)
@@ -85,11 +88,13 @@ func (ts *TextSel) debugColors() *TextSel {
 	return ts
 }
 
+// Debugging function to log the cursor position.
 func (ts *TextSel) debugCursor() *TextSel {
 	ts.debug("Cursor: (%d, %d)", ts.cursorRow, ts.cursorCol)
 	return ts
 }
 
+// Debugging function to log the selection range.
 func (ts *TextSel) debugSelection() *TextSel {
 	if ts.isSelecting {
 		startRow, startCol, endRow, endCol := ts.getSelectionRange()
@@ -100,6 +105,7 @@ func (ts *TextSel) debugSelection() *TextSel {
 	return ts
 }
 
+// Resets the cursor position to the beginning of the text.
 func (ts *TextSel) resetCursor() *TextSel {
 	ts.cursorRow = 0
 	ts.cursorCol = 0
@@ -109,6 +115,7 @@ func (ts *TextSel) resetCursor() *TextSel {
 	return ts
 }
 
+// Resets the selection state.
 func (ts *TextSel) resetSelection() *TextSel {
 	ts.isSelecting = false
 
@@ -230,6 +237,7 @@ func (ts *TextSel) getCurrentLine() string {
 	return buf.String()
 }
 
+// Returns the row index (zero-based) the last line in the text.
 func (ts *TextSel) lastRow() int {
 	text := ts.text
 	lastIndex := len(text) - 1
@@ -325,6 +333,7 @@ func (ts *TextSel) moveRight() {
 	ts.highlightCursor()
 }
 
+// Moves the cursor to the start of the current line.
 func (ts *TextSel) moveToStartOfLine() {
 	ts.cursorCol = 0
 
@@ -335,6 +344,7 @@ func (ts *TextSel) moveToStartOfLine() {
 	ts.highlightCursor()
 }
 
+// Moves the cursor to the end of the current line.
 func (ts *TextSel) moveToEndOfLine() {
 	ts.cursorCol = len(ts.getCurrentLine()) - 1
 
@@ -345,6 +355,7 @@ func (ts *TextSel) moveToEndOfLine() {
 	ts.highlightCursor()
 }
 
+// Starts the selection process.
 func (ts *TextSel) startSelection() {
 	ts.isSelecting = true
 	ts.selectionStartRow = ts.cursorRow
@@ -353,6 +364,7 @@ func (ts *TextSel) startSelection() {
 	ts.selectionEndCol = ts.cursorCol
 }
 
+// Finishes the selection process and calls the selectFunc callback.
 func (ts *TextSel) finishSelection() {
 	if ts.selectFunc != nil {
 		ts.selectFunc(ts.GetSelectedText())
