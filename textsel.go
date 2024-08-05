@@ -50,8 +50,6 @@ func NewTextSel() *TextSel {
 
 	ts := &TextSel{
 		TextView:               textView,
-		cursorRow:              0,
-		cursorCol:              0,
 		defaultColor:           fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimaryTextColor), colorToHex(tview.Styles.PrimitiveBackgroundColor)),
 		cursorColor:            fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimitiveBackgroundColor), colorToHex(tview.Styles.PrimaryTextColor)),
 		selectionColor:         fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimitiveBackgroundColor), colorToHex(tview.Styles.SecondaryTextColor)),
@@ -61,7 +59,15 @@ func NewTextSel() *TextSel {
 	// Handle key events for moving the cursor and selecting text
 	ts.SetInputCapture(ts.handleKeyEvents)
 
+	ts.resetCursor()
+	ts.resetSelection()
+
 	return ts
+}
+
+// Helper function to convert tcell.Color to a hex string.
+func colorToHex(color tcell.Color) string {
+	return fmt.Sprintf("#%06X", color.Hex())
 }
 
 func (ts *TextSel) debug(format string, args ...interface{}) {
@@ -86,18 +92,38 @@ func (ts *TextSel) debugCursor() *TextSel {
 
 func (ts *TextSel) debugSelection() *TextSel {
 	if ts.isSelecting {
-		ts.debug("Selection range: (%d, %d) - (%d, %d)", ts.selectionStartRow, ts.selectionStartCol, ts.selectionEndRow, ts.selectionEndCol)
+		startRow, startCol, endRow, endCol := ts.getSelectionRange()
+		ts.debug("Selection range: (%d, %d) - (%d, %d)", startRow, startCol, endRow, endCol)
 	} else {
 		ts.debug("No selection")
 	}
 	return ts
 }
 
-// SetText sets the text content of the TextSel widget, retaining the cursor
-// and selection positions. Note that if the text is significantly different
-// from the previous text, the cursor and selection positions may not be where
-// you expect them to be. If the text is shortened, making the cursor or
-// selection positions invalid, they will be adjusted to the end of the text.
+func (ts *TextSel) resetCursor() *TextSel {
+	ts.cursorRow = 0
+	ts.cursorCol = 0
+
+	ts.highlightCursor()
+
+	return ts
+}
+
+func (ts *TextSel) resetSelection() *TextSel {
+	ts.isSelecting = false
+
+	ts.selectionStartRow = 0
+	ts.selectionStartCol = 0
+	ts.selectionEndRow = 0
+	ts.selectionEndCol = 0
+
+	ts.highlightCursor()
+
+	return ts
+}
+
+// SetText sets the text content of the TextSel widget, resetting the cursor
+// position and selection state.
 //
 // Example:
 //
@@ -105,21 +131,9 @@ func (ts *TextSel) debugSelection() *TextSel {
 func (ts *TextSel) SetText(text string) *TextSel {
 	ts.text = text
 	ts.TextView.SetText(text)
-	ts.highlightCursor()
 
-	lines := strings.Split(text, "\n")
-
-	if ts.cursorRow >= len(lines) {
-		ts.cursorRow = len(lines) - 1
-	}
-
-	if ts.selectionStartRow >= len(lines) {
-		ts.selectionStartRow = len(lines) - 1
-	}
-
-	if ts.selectionEndRow >= len(lines) {
-		ts.selectionEndRow = len(lines) - 1
-	}
+	ts.resetCursor()
+	ts.resetSelection()
 
 	return ts
 }
@@ -156,11 +170,6 @@ func (ts *TextSel) GetSelectedText() string {
 	for idx := 0; idx < len(text); idx++ {
 		char := text[idx]
 
-		if char == '\n' {
-			row++
-			col = 0
-		}
-
 		if row == startRow && col == startCol {
 			sel = true
 		}
@@ -173,14 +182,14 @@ func (ts *TextSel) GetSelectedText() string {
 			sel = false
 			break
 		}
+
+		if char == '\n' {
+			row++
+			col = 0
+		}
 	}
 
 	return buf.String()
-}
-
-// Helper function to convert tcell.Color to a hex string.
-func colorToHex(color tcell.Color) string {
-	return fmt.Sprintf("#%06X", color.Hex())
 }
 
 // Helper function to get the selection range in the text.
@@ -195,10 +204,37 @@ func (ts *TextSel) getSelectionRange() (int, int, int, int) {
 	return startRow, startCol, endRow, endCol
 }
 
+// Retrieves the current line the cursor is on.
+func (ts *TextSel) getCurrentLine() string {
+	text := ts.text
+
+	buf := strings.Builder{}
+	row := 0
+
+	for idx := 0; idx < len(text); idx++ {
+		char := text[idx]
+
+		if row == ts.cursorRow {
+			buf.WriteString(string(char))
+		}
+
+		if char == '\n' {
+			row++
+
+			if row > ts.cursorRow {
+				break
+			}
+		}
+	}
+
+	return buf.String()
+}
+
 // Moves the cursor up by one row.
 func (ts *TextSel) moveUp() {
 	if ts.cursorRow > 0 {
 		ts.cursorRow--
+
 		if ts.cursorCol > len(ts.getCurrentLine()) {
 			ts.cursorCol = len(ts.getCurrentLine())
 		}
@@ -214,15 +250,19 @@ func (ts *TextSel) moveUp() {
 
 // Moves the cursor down by one row.
 func (ts *TextSel) moveDown() {
-	lines := strings.Split(ts.text, "\n")
-	if ts.cursorRow < len(lines)-1 {
+	lastRow := strings.Count(ts.text, "\n")
+
+	if ts.cursorRow < lastRow {
 		ts.cursorRow++
+
 		if ts.cursorCol > len(ts.getCurrentLine()) {
 			ts.cursorCol = len(ts.getCurrentLine()) - 1
+
 			if ts.cursorCol < 0 {
 				ts.cursorCol = 0
 			}
 		}
+
 		if ts.isSelecting {
 			ts.selectionEndRow = ts.cursorRow
 			ts.selectionEndCol = ts.cursorCol
@@ -251,9 +291,11 @@ func (ts *TextSel) moveLeft() {
 
 // Moves the cursor right by one column.
 func (ts *TextSel) moveRight() {
+	lastRow := strings.Count(ts.text, "\n")
+
 	if ts.cursorCol < len(ts.getCurrentLine())-1 {
 		ts.cursorCol++
-	} else if ts.cursorRow < len(strings.Split(ts.text, "\n"))-1 {
+	} else if ts.cursorRow < lastRow {
 		ts.cursorRow++
 		ts.cursorCol = 0
 	}
@@ -293,14 +335,11 @@ func (ts *TextSel) startSelection() {
 }
 
 func (ts *TextSel) finishSelection() {
-	// Call the selectFunc callback with the selected text
 	if ts.selectFunc != nil {
 		ts.selectFunc(ts.GetSelectedText())
 	}
 
-	ts.isSelecting = false
-	ts.selectionEndRow = ts.cursorRow
-	ts.selectionEndCol = ts.cursorCol
+	ts.resetSelection()
 }
 
 // Handles key events for moving the cursor and selecting text.
@@ -338,43 +377,6 @@ func (ts *TextSel) handleKeyEvents(event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
-// Determines if the cursor location is within the selection.
-func (ts *TextSel) cursorLocationIsWithinSelection() bool {
-	if !ts.isSelecting {
-		return false
-	}
-
-	startRow, startCol, endRow, endCol := ts.getSelectionRange()
-
-	start := [2]int{startRow, startCol}
-	end := [2]int{endRow, endCol}
-	cursor := [2]int{ts.cursorRow, ts.cursorCol}
-
-	lines := strings.Split(ts.text, "\n")
-
-	return isCursorWithinRange(cursor, start, end, lines)
-}
-
-// Converts a cursor position to an absolute position in the text.
-func toAbsolutePosition(point [2]int, lines []string) int {
-	row, col := point[0], point[1]
-	absolutePos := 0
-	for i := 0; i < row; i++ {
-		absolutePos += len(lines[i]) + 1 // Add 1 for the newline character
-	}
-	absolutePos += col
-	return absolutePos
-}
-
-// Determines if the cursor is within the specified range in the text.
-func isCursorWithinRange(cursor, start, end [2]int, lines []string) bool {
-	cursorAbs := toAbsolutePosition(cursor, lines)
-	startAbs := toAbsolutePosition(start, lines)
-	endAbs := toAbsolutePosition(end, lines)
-
-	return startAbs <= cursorAbs && cursorAbs <= endAbs
-}
-
 // Highlights the cursor position and selected text in the widget.
 func (ts *TextSel) highlightCursor() {
 	text := ts.text
@@ -396,11 +398,14 @@ func (ts *TextSel) highlightCursor() {
 
 		// Highlight the cursor position
 		if row == ts.cursorRow && col == ts.cursorCol {
+			cursorStart := ts.cursorColor
+			cursorEnd := ts.defaultColor
 			if sel {
-				buf.WriteString(ts.cursorInSelectionColor)
-			} else {
-				buf.WriteString(ts.cursorColor)
+				cursorStart = ts.cursorInSelectionColor
+				cursorEnd = ts.selectionColor
 			}
+
+			buf.WriteString(cursorStart)
 
 			// If the cursor is on an empty line ("\n"), add a space to make it
 			// visible.
@@ -410,11 +415,9 @@ func (ts *TextSel) highlightCursor() {
 				buf.WriteString(string(char))
 			}
 
-			if sel {
-				buf.WriteString(ts.selectionColor)
-			} else {
-				buf.WriteString(ts.defaultColor)
-			}
+			buf.WriteString(cursorEnd)
+		} else if char == '\n' {
+			buf.WriteString(" \n")
 		} else {
 			buf.WriteString(string(char))
 		}
@@ -434,15 +437,4 @@ func (ts *TextSel) highlightCursor() {
 	}
 
 	ts.TextView.SetText(buf.String())
-}
-
-// Retrieves the current line the cursor is on.
-func (ts *TextSel) getCurrentLine() string {
-	lines := strings.Split(ts.text, "\n")
-
-	if ts.cursorRow >= len(lines) {
-		return ""
-	}
-
-	return lines[ts.cursorRow]
 }
