@@ -1,2 +1,6 @@
+# v0.1.1 (2024-08-04)
+- Numerous (is there a word for *more* than numerous?) fixes for selection and cursor movement bugs
+- Numerous efficiency improvements
+
 # v0.1.0 (2024-08-02)
 - Initial release
