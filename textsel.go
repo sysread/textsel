@@ -453,6 +453,11 @@ func (ts *TextSel) highlightCursor() {
 	row := 0
 	col := 0
 
+	// We only highlight the cursor if the widget has focus
+	showCursor := ts.TextView.HasFocus()
+
+	// Track the current format in the text, excluding the codes we use to
+	// highlight the cursor and selection.
 	formatCode := newFormatCode()
 
 	for idx := 0; idx < len(text); idx++ {
@@ -508,7 +513,7 @@ func (ts *TextSel) highlightCursor() {
 		}
 
 		// Highlight the cursor position
-		if isCursorRow && isCursorCol {
+		if showCursor && isCursorRow && isCursorCol {
 			cursorStart := ts.cursorColor
 			cursorEnd := formatCode.String()
 
