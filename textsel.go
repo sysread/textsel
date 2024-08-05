@@ -145,35 +145,37 @@ func (ts *TextSel) SetSelectFunc(f func(string)) *TextSel {
 //	selectedText := textSel.GetSelectedText()
 //	fmt.Println("Selected text:", selectedText)
 func (ts *TextSel) GetSelectedText() string {
-	if !ts.isSelecting {
-		return ""
-	}
-
+	text := ts.text
 	startRow, startCol, endRow, endCol := ts.getSelectionRange()
 
-	lines := strings.Split(ts.text, "\n")
-	selectedLines := []string{}
+	buf := strings.Builder{}
+	sel := false
+	row := 0
+	col := 0
 
-	for row := startRow; row <= endRow; row++ {
-		line := lines[row]
+	for idx := 0; idx < len(text); idx++ {
+		char := text[idx]
 
-		lastCol := endCol + 1
-		if lastCol > len(line) {
-			lastCol = len(line) - 1
+		if char == '\n' {
+			row++
+			col = 0
 		}
 
-		if row == startRow && row == endRow {
-			selectedLines = append(selectedLines, line[startCol:lastCol])
-		} else if row == startRow {
-			selectedLines = append(selectedLines, line[startCol:])
-		} else if row == endRow {
-			selectedLines = append(selectedLines, line[:lastCol])
-		} else {
-			selectedLines = append(selectedLines, line)
+		if row == startRow && col == startCol {
+			sel = true
+		}
+
+		if sel {
+			buf.WriteString(string(char))
+		}
+
+		if row == endRow && col == endCol {
+			sel = false
+			break
 		}
 	}
 
-	return strings.Join(selectedLines, "\n")
+	return buf.String()
 }
 
 // Helper function to convert tcell.Color to a hex string.
