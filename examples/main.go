@@ -7,18 +7,18 @@ import (
 	"github.com/sysread/textsel"
 )
 
-const text = `
-This is an example of the tview-textsel package.
+const text = `[green]This is an [::b]example[::-] of the [red]tview-textsel[-] package.
 
-Use arrow keys to move the cursor.
-
-Press space to start/stop selecting text.
-`
+Use [::b]arrow keys[::-] to move the cursor.
+Press [blue]space[-] to start/stop selecting text.`
 
 func main() {
 	app := tview.NewApplication()
 
-	textSel := textsel.NewTextSel().SetText(text)
+	textSel := textsel.
+		NewTextSel().
+		SetText(text)
+
 	textSel.SetSelectFunc(func(selectedText string) {
 		app.Stop()
 		fmt.Println("Selected text:\n\n", selectedText)

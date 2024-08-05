@@ -1,3 +1,6 @@
+# v0.1.2 (2024-08-05)
+- Fix formatting of cursor position and selection when caller text content already includes format codes
+
 # v0.1.1 (2024-08-04)
 - Numerous (is there a word for *more* than numerous?) fixes for selection and cursor movement bugs
 - Numerous efficiency improvements

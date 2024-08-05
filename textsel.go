@@ -4,11 +4,14 @@ package textsel
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+var formatRegex = regexp.MustCompile(`^\[[-:a-zA-Z0-9]+\]`)
 
 // TextSel is a `tview.TextView` widget that supports selecting text with the keyboard.
 type TextSel struct {
@@ -61,7 +64,6 @@ func NewTextSel() *TextSel {
 
 	ts.resetCursor()
 	ts.resetSelection()
-	ts.debugColors()
 
 	return ts
 }
@@ -137,8 +139,9 @@ func (ts *TextSel) resetSelection() *TextSel {
 //
 //	textSel.SetText("New text content")
 func (ts *TextSel) SetText(text string) *TextSel {
-	ts.text = text
+	//ts.text = text
 	ts.TextView.SetText(text)
+	ts.text = ts.TextView.GetText(false)
 
 	ts.resetCursor()
 	ts.resetSelection()
@@ -176,6 +179,12 @@ func (ts *TextSel) GetSelectedText() string {
 	col := 0
 
 	for idx := 0; idx < len(text); idx++ {
+		// Skip any format codes
+		for formatRegex.MatchString(text[idx:]) {
+			match := formatRegex.FindString(text[idx:])
+			idx += len(match)
+		}
+
 		char := text[idx]
 
 		if row == startRow && col == startCol {
@@ -194,6 +203,8 @@ func (ts *TextSel) GetSelectedText() string {
 		if char == '\n' {
 			row++
 			col = 0
+		} else {
+			col++
 		}
 	}
 
@@ -215,11 +226,16 @@ func (ts *TextSel) getSelectionRange() (int, int, int, int) {
 // Retrieves the current line the cursor is on.
 func (ts *TextSel) getCurrentLine() string {
 	text := ts.text
-
 	buf := strings.Builder{}
 	row := 0
 
 	for idx := 0; idx < len(text); idx++ {
+		// Skip any format codes
+		for formatRegex.MatchString(text[idx:]) {
+			match := formatRegex.FindString(text[idx:])
+			idx += len(match)
+		}
+
 		char := text[idx]
 
 		if row == ts.cursorRow {
@@ -256,9 +272,9 @@ func (ts *TextSel) lastRow() int {
 // Moves the cursor up by one row.
 func (ts *TextSel) moveUp() {
 	if ts.cursorRow > 0 {
-		currentLine := ts.getCurrentLine()
-
 		ts.cursorRow--
+
+		currentLine := ts.getCurrentLine()
 
 		if ts.cursorCol > len(currentLine) {
 			ts.cursorCol = len(currentLine) - 1
@@ -279,9 +295,9 @@ func (ts *TextSel) moveUp() {
 // Moves the cursor down by one row.
 func (ts *TextSel) moveDown() {
 	if ts.cursorRow < ts.lastRow() {
-		currentLine := ts.getCurrentLine()
-
 		ts.cursorRow++
+
+		currentLine := ts.getCurrentLine()
 
 		if ts.cursorCol > len(currentLine) {
 			ts.cursorCol = len(currentLine) - 1
@@ -419,7 +435,32 @@ func (ts *TextSel) highlightCursor() {
 	row := 0
 	col := 0
 
+	formatCode := newFormatCode()
+
 	for idx := 0; idx < len(text); idx++ {
+		// Check for the start of a format code using the regex. Do so until we
+		// get all of the ones at the current index.
+		for formatRegex.MatchString(text[idx:]) {
+			match := formatRegex.FindString(text[idx:])
+
+			// If we are selecting, we skip the format code, because it may
+			// interfere with the selection format. Otherwise, we write it to
+			// the buffer.
+			if !sel {
+				// Write the format code unchanged to the buffer
+				buf.WriteString(match)
+			}
+
+			// Adjust index to skip the matched format code
+			idx += len(match)
+
+			// Parse the format code into its components and save them
+			// for later use.
+			formatCode = formatCode.update(match)
+		}
+
+		// Now that we've dealt with any leading format tags, we can get the
+		// current character.
 		char := text[idx]
 
 		// Mark the start of the selection
@@ -432,6 +473,7 @@ func (ts *TextSel) highlightCursor() {
 			isSelStartCol = true
 		}
 
+		// If this is the beginning of the selection, mark it
 		if ts.isSelecting && isSelStartRow && isSelStartCol {
 			sel = true
 			buf.WriteString(ts.selectionColor)
@@ -450,14 +492,21 @@ func (ts *TextSel) highlightCursor() {
 		// Highlight the cursor position
 		if isCursorRow && isCursorCol {
 			cursorStart := ts.cursorColor
-			cursorEnd := ts.defaultColor
+			cursorEnd := formatCode.String()
+
 			if sel {
 				cursorStart = ts.cursorInSelectionColor
 
-				if ts.cursorRow == endRow && ts.cursorCol == endCol {
-					cursorEnd = ts.defaultColor
-				} else {
+				if ts.cursorRow != endRow || ts.cursorCol != endCol {
+					// If the cursor is NOT at the end of the selection, the
+					// selection color should be used to "reset" the format.
 					cursorEnd = ts.selectionColor
+				} else {
+					// If we ARE in the middle of a selection, we need to use
+					// a slightly modified version of the current format string,
+					// to remove the in-selection styles used to highlight the
+					// cursor.
+					cursorEnd = formatCode.update("[::-]").String()
 				}
 			}
 
@@ -473,17 +522,17 @@ func (ts *TextSel) highlightCursor() {
 
 			buf.WriteString(cursorEnd)
 		} else if char == '\n' {
+			// If the cursor is not on the current character, but it's a newline,
+			// we need to add a space to make it visible.
 			buf.WriteString(" \n")
 		} else {
 			buf.WriteString(string(char))
 		}
 
 		// Mark the end of the selection
-		if sel {
-			if row == endRow && col == endCol {
-				sel = false
-				buf.WriteString(ts.defaultColor)
-			}
+		if sel && row == endRow && col == endCol {
+			sel = false
+			buf.WriteString(formatCode.String())
 		}
 
 		if char == '\n' {
