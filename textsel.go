@@ -40,8 +40,7 @@ type TextSel struct {
 //
 // Example:
 //
-//	textSel := textsel.NewTextSel().
-//	    SetText("Hello, World!")
+//	textSel := textsel.NewTextSel().SetText("Hello, World!")
 func NewTextSel() *TextSel {
 	textView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -61,6 +60,7 @@ func NewTextSel() *TextSel {
 
 	ts.resetCursor()
 	ts.resetSelection()
+	ts.debugColors()
 
 	return ts
 }
@@ -230,13 +230,32 @@ func (ts *TextSel) getCurrentLine() string {
 	return buf.String()
 }
 
+func (ts *TextSel) lastRow() int {
+	text := ts.text
+	lastIndex := len(text) - 1
+	count := 0
+
+	for idx := 0; idx < len(text); idx++ {
+		if text[idx] == '\n' && idx != lastIndex {
+			count++
+		}
+	}
+
+	return count
+}
+
 // Moves the cursor up by one row.
 func (ts *TextSel) moveUp() {
 	if ts.cursorRow > 0 {
+		currentLine := ts.getCurrentLine()
+
 		ts.cursorRow--
 
-		if ts.cursorCol > len(ts.getCurrentLine()) {
-			ts.cursorCol = len(ts.getCurrentLine())
+		if ts.cursorCol > len(currentLine) {
+			ts.cursorCol = len(currentLine) - 1
+			if ts.cursorCol < 0 {
+				ts.cursorCol = 0
+			}
 		}
 
 		if ts.isSelecting {
@@ -250,13 +269,13 @@ func (ts *TextSel) moveUp() {
 
 // Moves the cursor down by one row.
 func (ts *TextSel) moveDown() {
-	lastRow := strings.Count(ts.text, "\n")
+	if ts.cursorRow < ts.lastRow() {
+		currentLine := ts.getCurrentLine()
 
-	if ts.cursorRow < lastRow {
 		ts.cursorRow++
 
-		if ts.cursorCol > len(ts.getCurrentLine()) {
-			ts.cursorCol = len(ts.getCurrentLine()) - 1
+		if ts.cursorCol > len(currentLine) {
+			ts.cursorCol = len(currentLine) - 1
 
 			if ts.cursorCol < 0 {
 				ts.cursorCol = 0
@@ -291,11 +310,9 @@ func (ts *TextSel) moveLeft() {
 
 // Moves the cursor right by one column.
 func (ts *TextSel) moveRight() {
-	lastRow := strings.Count(ts.text, "\n")
-
 	if ts.cursorCol < len(ts.getCurrentLine())-1 {
 		ts.cursorCol++
-	} else if ts.cursorRow < lastRow {
+	} else if ts.cursorRow < ts.lastRow() {
 		ts.cursorRow++
 		ts.cursorCol = 0
 	}
@@ -310,6 +327,7 @@ func (ts *TextSel) moveRight() {
 
 func (ts *TextSel) moveToStartOfLine() {
 	ts.cursorCol = 0
+
 	if ts.isSelecting {
 		ts.selectionEndCol = ts.cursorCol
 	}
@@ -319,6 +337,7 @@ func (ts *TextSel) moveToStartOfLine() {
 
 func (ts *TextSel) moveToEndOfLine() {
 	ts.cursorCol = len(ts.getCurrentLine()) - 1
+
 	if ts.isSelecting {
 		ts.selectionEndCol = ts.cursorCol
 	}
@@ -391,18 +410,42 @@ func (ts *TextSel) highlightCursor() {
 		char := text[idx]
 
 		// Mark the start of the selection
-		if ts.isSelecting && row == startRow && col == startCol {
+		isSelStartRow := row == startRow
+		isSelStartCol := col == startCol
+
+		// If the cursor moves up or down from a column > 0, but the current
+		// line is empty, pretend the cursor is on the first column.
+		if !isSelStartCol && char == '\n' && col == 0 && startCol > 0 {
+			isSelStartCol = true
+		}
+
+		if ts.isSelecting && isSelStartRow && isSelStartCol {
 			sel = true
 			buf.WriteString(ts.selectionColor)
 		}
 
+		// Determine if the cursor is on the current character
+		isCursorRow := row == ts.cursorRow
+		isCursorCol := col == ts.cursorCol
+
+		// If the cursor moves up or down from a column > 0, but the current
+		// line is empty, pretend the cursor is on the first column.
+		if !isCursorCol && char == '\n' && col == 0 && ts.cursorCol > 0 {
+			isCursorCol = true
+		}
+
 		// Highlight the cursor position
-		if row == ts.cursorRow && col == ts.cursorCol {
+		if isCursorRow && isCursorCol {
 			cursorStart := ts.cursorColor
 			cursorEnd := ts.defaultColor
 			if sel {
 				cursorStart = ts.cursorInSelectionColor
-				cursorEnd = ts.selectionColor
+
+				if ts.cursorRow == endRow && ts.cursorCol == endCol {
+					cursorEnd = ts.defaultColor
+				} else {
+					cursorEnd = ts.selectionColor
+				}
 			}
 
 			buf.WriteString(cursorStart)
@@ -423,9 +466,11 @@ func (ts *TextSel) highlightCursor() {
 		}
 
 		// Mark the end of the selection
-		if row == endRow && col == endCol {
-			sel = false
-			buf.WriteString(ts.defaultColor)
+		if sel {
+			if row == endRow && col == endCol {
+				sel = false
+				buf.WriteString(ts.defaultColor)
+			}
 		}
 
 		if char == '\n' {
