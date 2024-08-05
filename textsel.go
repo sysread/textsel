@@ -17,7 +17,8 @@ type TextSel struct {
 	text string
 
 	// Cursor position
-	cursorRow, cursorCol int
+	cursorRow int
+	cursorCol int
 
 	// Selection state
 	isSelecting       bool
