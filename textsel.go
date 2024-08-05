@@ -12,6 +12,7 @@ import (
 )
 
 var formatRegex = regexp.MustCompile(`^\[[-:a-zA-Z0-9]+\]`)
+var formatRegexGlobal = regexp.MustCompile(`\[[-:a-zA-Z0-9]+\]`)
 
 // TextSel is a `tview.TextView` widget that supports selecting text with the keyboard.
 type TextSel struct {
@@ -130,6 +131,23 @@ func (ts *TextSel) resetSelection() *TextSel {
 	ts.highlightCursor()
 
 	return ts
+}
+
+// GetText returns the text content of the TextSel widget. If `stripFormatting`
+// is true, any format codes in the text will be removed.
+//
+// Example:
+//
+//	text := textSel.GetText(false)
+func (ts *TextSel) GetText(stripFormatting bool) string {
+	text := ts.text
+
+	if stripFormatting {
+		// Remove any format codes from the text
+		text = formatRegexGlobal.ReplaceAllString(text, "")
+	}
+
+	return text
 }
 
 // SetText sets the text content of the TextSel widget, resetting the cursor
