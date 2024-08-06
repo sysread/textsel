@@ -63,6 +63,16 @@ func NewTextSel() *TextSel {
 	// Handle key events for moving the cursor and selecting text
 	ts.SetInputCapture(ts.handleKeyEvents)
 
+	// Ensure that we redraw when we are focused or blurred to update whether
+	// the cursor is visible or not.
+	ts.SetFocusFunc(func() {
+		go ts.highlightCursor()
+	})
+
+	ts.SetBlurFunc(func() {
+		go ts.highlightCursor()
+	})
+
 	ts.resetCursor()
 	ts.resetSelection()
 
@@ -74,7 +84,7 @@ func colorToHex(color tcell.Color) string {
 	return fmt.Sprintf("#%06X", color.Hex())
 }
 
-// Debugging function to write to `debug.log`.
+// Debug function to write to `debug.log`.
 func (ts *TextSel) debug(format string, args ...interface{}) {
 	file, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	defer file.Close()
@@ -82,7 +92,7 @@ func (ts *TextSel) debug(format string, args ...interface{}) {
 	file.WriteString(line + "\n")
 }
 
-// Debugging function to log the color codes being used for the cursor and
+// Debug function to log the color codes being used for the cursor and
 // selection highlighting.
 func (ts *TextSel) debugColors() *TextSel {
 	ts.debug("          defaultColor: %s", ts.defaultColor)
@@ -92,13 +102,13 @@ func (ts *TextSel) debugColors() *TextSel {
 	return ts
 }
 
-// Debugging function to log the cursor position.
+// Debug function to log the cursor position.
 func (ts *TextSel) debugCursor() *TextSel {
 	ts.debug("Cursor: (%d, %d)", ts.cursorRow, ts.cursorCol)
 	return ts
 }
 
-// Debugging function to log the selection range.
+// Debug function to log the selection range.
 func (ts *TextSel) debugSelection() *TextSel {
 	if ts.isSelecting {
 		startRow, startCol, endRow, endCol := ts.getSelectionRange()
