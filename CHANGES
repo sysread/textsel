@@ -1,3 +1,7 @@
+# v0.1.6 (2024-08-??)
+- Restructure code and improve test coverage
+- Minor simplifications to formatting codes
+
 # v0.1.5 (2024-08-05)
 - Redraw when focused or blurred to ensure cursor is shown or hidden as appropriate
 

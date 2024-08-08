@@ -78,11 +78,6 @@ func NewTextSel() *TextSel {
 	return ts
 }
 
-// Helper function to convert tcell.Color to a hex string.
-func colorToHex(color tcell.Color) string {
-	return fmt.Sprintf("#%06X", color.Hex())
-}
-
 // GetText returns the text content of the TextSel widget. If `stripFormatting`
 // is true, any format codes in the text will be removed.
 //
