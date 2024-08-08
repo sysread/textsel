@@ -3,7 +3,6 @@ package textsel
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 
@@ -54,10 +53,10 @@ func NewTextSel() *TextSel {
 
 	ts := &TextSel{
 		TextView:               textView,
-		defaultColor:           fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimaryTextColor), colorToHex(tview.Styles.PrimitiveBackgroundColor)),
-		cursorColor:            fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimitiveBackgroundColor), colorToHex(tview.Styles.PrimaryTextColor)),
-		selectionColor:         fmt.Sprintf("[%s:%s:-]", colorToHex(tview.Styles.PrimitiveBackgroundColor), colorToHex(tview.Styles.SecondaryTextColor)),
-		cursorInSelectionColor: fmt.Sprintf("[%s:%s:bu]", colorToHex(tview.Styles.PrimitiveBackgroundColor), colorToHex(tview.Styles.SecondaryTextColor)),
+		defaultColor:           fmt.Sprintf("[%s:%s:-]", tview.Styles.PrimaryTextColor, tview.Styles.PrimitiveBackgroundColor),
+		cursorColor:            fmt.Sprintf("[%s:%s:-]", tview.Styles.PrimitiveBackgroundColor, tview.Styles.PrimaryTextColor),
+		selectionColor:         fmt.Sprintf("[%s:%s:-]", tview.Styles.PrimitiveBackgroundColor, tview.Styles.SecondaryTextColor),
+		cursorInSelectionColor: fmt.Sprintf("[%s:%s:bu]", tview.Styles.PrimitiveBackgroundColor, tview.Styles.SecondaryTextColor),
 	}
 
 	// Handle key events for moving the cursor and selecting text
@@ -82,65 +81,6 @@ func NewTextSel() *TextSel {
 // Helper function to convert tcell.Color to a hex string.
 func colorToHex(color tcell.Color) string {
 	return fmt.Sprintf("#%06X", color.Hex())
-}
-
-// Debug function to write to `debug.log`.
-func (ts *TextSel) debug(format string, args ...interface{}) {
-	file, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	defer file.Close()
-	line := fmt.Sprintf(format, args...)
-	file.WriteString(line + "\n")
-}
-
-// Debug function to log the color codes being used for the cursor and
-// selection highlighting.
-func (ts *TextSel) debugColors() *TextSel {
-	ts.debug("          defaultColor: %s", ts.defaultColor)
-	ts.debug("           cursorColor: %s", ts.cursorColor)
-	ts.debug("        selectionColor: %s", ts.selectionColor)
-	ts.debug("cursorInSelectionColor: %s", ts.cursorInSelectionColor)
-	return ts
-}
-
-// Debug function to log the cursor position.
-func (ts *TextSel) debugCursor() *TextSel {
-	ts.debug("Cursor: (%d, %d)", ts.cursorRow, ts.cursorCol)
-	return ts
-}
-
-// Debug function to log the selection range.
-func (ts *TextSel) debugSelection() *TextSel {
-	if ts.isSelecting {
-		startRow, startCol, endRow, endCol := ts.getSelectionRange()
-		ts.debug("Selection range: (%d, %d) - (%d, %d)", startRow, startCol, endRow, endCol)
-	} else {
-		ts.debug("No selection")
-	}
-	return ts
-}
-
-// Resets the cursor position to the beginning of the text.
-func (ts *TextSel) resetCursor() *TextSel {
-	ts.cursorRow = 0
-	ts.cursorCol = 0
-
-	ts.highlightCursor()
-
-	return ts
-}
-
-// Resets the selection state.
-func (ts *TextSel) resetSelection() *TextSel {
-	ts.isSelecting = false
-
-	ts.selectionStartRow = 0
-	ts.selectionStartCol = 0
-	ts.selectionEndRow = 0
-	ts.selectionEndCol = 0
-
-	ts.highlightCursor()
-
-	return ts
 }
 
 // GetText returns the text content of the TextSel widget. If `stripFormatting`
@@ -239,18 +179,6 @@ func (ts *TextSel) GetSelectedText() string {
 	return buf.String()
 }
 
-// Helper function to get the selection range in the text.
-func (ts *TextSel) getSelectionRange() (int, int, int, int) {
-	startRow, startCol := ts.selectionStartRow, ts.selectionStartCol
-	endRow, endCol := ts.selectionEndRow, ts.selectionEndCol
-
-	if startRow > endRow || (startRow == endRow && startCol > endCol) {
-		startRow, startCol, endRow, endCol = endRow, endCol, startRow, startCol
-	}
-
-	return startRow, startCol, endRow, endCol
-}
-
 // Retrieves the current line the cursor is on.
 func (ts *TextSel) getCurrentLine() string {
 	text := ts.text
@@ -297,127 +225,6 @@ func (ts *TextSel) lastRow() int {
 	return count
 }
 
-// Moves the cursor up by one row.
-func (ts *TextSel) moveUp() {
-	if ts.cursorRow > 0 {
-		ts.cursorRow--
-
-		currentLine := ts.getCurrentLine()
-
-		if ts.cursorCol > len(currentLine) {
-			ts.cursorCol = len(currentLine) - 1
-			if ts.cursorCol < 0 {
-				ts.cursorCol = 0
-			}
-		}
-
-		if ts.isSelecting {
-			ts.selectionEndRow = ts.cursorRow
-			ts.selectionEndCol = ts.cursorCol
-		}
-	}
-
-	ts.highlightCursor()
-}
-
-// Moves the cursor down by one row.
-func (ts *TextSel) moveDown() {
-	if ts.cursorRow < ts.lastRow() {
-		ts.cursorRow++
-
-		currentLine := ts.getCurrentLine()
-
-		if ts.cursorCol > len(currentLine) {
-			ts.cursorCol = len(currentLine) - 1
-
-			if ts.cursorCol < 0 {
-				ts.cursorCol = 0
-			}
-		}
-
-		if ts.isSelecting {
-			ts.selectionEndRow = ts.cursorRow
-			ts.selectionEndCol = ts.cursorCol
-		}
-	}
-
-	ts.highlightCursor()
-}
-
-// Moves the cursor left by one column.
-func (ts *TextSel) moveLeft() {
-	if ts.cursorCol > 0 {
-		ts.cursorCol--
-	} else if ts.cursorRow > 0 {
-		ts.cursorRow--
-		ts.cursorCol = len(ts.getCurrentLine()) - 1 // Adjust to the last valid column in the previous row
-	}
-
-	if ts.isSelecting {
-		ts.selectionEndRow = ts.cursorRow
-		ts.selectionEndCol = ts.cursorCol
-	}
-
-	ts.highlightCursor()
-}
-
-// Moves the cursor right by one column.
-func (ts *TextSel) moveRight() {
-	if ts.cursorCol < len(ts.getCurrentLine())-1 {
-		ts.cursorCol++
-	} else if ts.cursorRow < ts.lastRow() {
-		ts.cursorRow++
-		ts.cursorCol = 0
-	}
-
-	if ts.isSelecting {
-		ts.selectionEndRow = ts.cursorRow
-		ts.selectionEndCol = ts.cursorCol
-	}
-
-	ts.highlightCursor()
-}
-
-// Moves the cursor to the start of the current line.
-func (ts *TextSel) moveToStartOfLine() {
-	ts.cursorCol = 0
-
-	if ts.isSelecting {
-		ts.selectionEndCol = ts.cursorCol
-	}
-
-	ts.highlightCursor()
-}
-
-// Moves the cursor to the end of the current line.
-func (ts *TextSel) moveToEndOfLine() {
-	ts.cursorCol = len(ts.getCurrentLine()) - 1
-
-	if ts.isSelecting {
-		ts.selectionEndCol = ts.cursorCol
-	}
-
-	ts.highlightCursor()
-}
-
-// Starts the selection process.
-func (ts *TextSel) startSelection() {
-	ts.isSelecting = true
-	ts.selectionStartRow = ts.cursorRow
-	ts.selectionStartCol = ts.cursorCol
-	ts.selectionEndRow = ts.cursorRow
-	ts.selectionEndCol = ts.cursorCol
-}
-
-// Finishes the selection process and calls the selectFunc callback.
-func (ts *TextSel) finishSelection() {
-	if ts.selectFunc != nil {
-		ts.selectFunc(ts.GetSelectedText())
-	}
-
-	ts.resetSelection()
-}
-
 // Handles key events for moving the cursor and selecting text.
 func (ts *TextSel) handleKeyEvents(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
@@ -451,130 +258,4 @@ func (ts *TextSel) handleKeyEvents(event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	return event
-}
-
-// Highlights the cursor position and selected text in the widget.
-func (ts *TextSel) highlightCursor() {
-	text := ts.text
-	startRow, startCol, endRow, endCol := ts.getSelectionRange()
-
-	buf := strings.Builder{}
-	sel := false
-	row := 0
-	col := 0
-
-	// We only highlight the cursor if the widget has focus
-	showCursor := ts.TextView.HasFocus()
-
-	// Track the current format in the text, excluding the codes we use to
-	// highlight the cursor and selection.
-	formatCode := newFormatCode()
-
-	for idx := 0; idx < len(text); idx++ {
-		// Check for the start of a format code using the regex. Do so until we
-		// get all of the ones at the current index.
-		for formatRegex.MatchString(text[idx:]) {
-			match := formatRegex.FindString(text[idx:])
-
-			// If we are selecting, we skip the format code, because it may
-			// interfere with the selection format. Otherwise, we write it to
-			// the buffer.
-			if !sel {
-				// Write the format code unchanged to the buffer
-				buf.WriteString(match)
-			}
-
-			// Adjust index to skip the matched format code
-			idx += len(match)
-
-			// Parse the format code into its components and save them
-			// for later use.
-			formatCode = formatCode.update(match)
-		}
-
-		// Now that we've dealt with any leading format tags, we can get the
-		// current character.
-		char := text[idx]
-
-		// Mark the start of the selection
-		isSelStartRow := row == startRow
-		isSelStartCol := col == startCol
-
-		// If the cursor moves up or down from a column > 0, but the current
-		// line is empty, pretend the cursor is on the first column.
-		if !isSelStartCol && char == '\n' && col == 0 && startCol > 0 {
-			isSelStartCol = true
-		}
-
-		// If this is the beginning of the selection, mark it
-		if ts.isSelecting && isSelStartRow && isSelStartCol {
-			sel = true
-			buf.WriteString(ts.selectionColor)
-		}
-
-		// Determine if the cursor is on the current character
-		isCursorRow := row == ts.cursorRow
-		isCursorCol := col == ts.cursorCol
-
-		// If the cursor moves up or down from a column > 0, but the current
-		// line is empty, pretend the cursor is on the first column.
-		if !isCursorCol && char == '\n' && col == 0 && ts.cursorCol > 0 {
-			isCursorCol = true
-		}
-
-		// Highlight the cursor position
-		if showCursor && isCursorRow && isCursorCol {
-			cursorStart := ts.cursorColor
-			cursorEnd := formatCode.String()
-
-			if sel {
-				cursorStart = ts.cursorInSelectionColor
-
-				if ts.cursorRow != endRow || ts.cursorCol != endCol {
-					// If the cursor is NOT at the end of the selection, the
-					// selection color should be used to "reset" the format.
-					cursorEnd = ts.selectionColor
-				} else {
-					// If we ARE in the middle of a selection, we need to use
-					// a slightly modified version of the current format string,
-					// to remove the in-selection styles used to highlight the
-					// cursor.
-					cursorEnd = formatCode.update("[::-]").String()
-				}
-			}
-
-			buf.WriteString(cursorStart)
-
-			// If the cursor is on an empty line ("\n"), add a space to make it
-			// visible.
-			if char == '\n' {
-				buf.WriteString(" \n")
-			} else {
-				buf.WriteString(string(char))
-			}
-
-			buf.WriteString(cursorEnd)
-		} else if char == '\n' {
-			// If the cursor is not on the current character, but it's a newline,
-			// we need to add a space to make it visible.
-			buf.WriteString(" \n")
-		} else {
-			buf.WriteString(string(char))
-		}
-
-		// Mark the end of the selection
-		if sel && row == endRow && col == endCol {
-			sel = false
-			buf.WriteString(formatCode.String())
-		}
-
-		if char == '\n' {
-			row++
-			col = 0
-		} else {
-			col++
-		}
-	}
-
-	ts.TextView.SetText(buf.String())
 }
