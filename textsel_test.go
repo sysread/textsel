@@ -5,20 +5,18 @@ import (
 )
 
 func TestNewTextSel(t *testing.T) {
-	textSel := NewTextSel()
-	if textSel == nil {
+	ts := NewTextSel()
+
+	if ts == nil {
 		t.Fatal("Failed to create TextSel instance")
 	}
 }
 
-func TestSetText(t *testing.T) {
-	textSel := NewTextSel()
+func TestGetAndSetText(t *testing.T) {
+	ts := NewTextSel().SetText("Hello, World!")
 
-	testText := "Hello, World!"
-	textSel.SetText(testText)
-
-	got := textSel.GetText(false)
-	if got != testText {
-		t.Errorf("SetText() failed. Got %v, expected %v", got, testText)
+	got := ts.GetText(false)
+	if got != "Hello, World!" {
+		t.Errorf("GetText() returned the wrong text:\nExpected: '%v'\nGot: '%v'", "Hello, World!", got)
 	}
 }
