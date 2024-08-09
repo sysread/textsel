@@ -32,7 +32,7 @@ func (ts *TextSel) debugCursor() *TextSel {
 // Debug function to log the selection range.
 func (ts *TextSel) debugSelection() *TextSel {
 	if ts.isSelecting {
-		startRow, startCol, endRow, endCol := ts.getSelectionRange()
+		startRow, startCol, endRow, endCol := ts.GetSelectionRange()
 		ts.debug("Selection range: (%d, %d) - (%d, %d)", startRow, startCol, endRow, endCol)
 	} else {
 		ts.debug("No selection")

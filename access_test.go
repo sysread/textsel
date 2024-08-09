@@ -12,13 +12,13 @@ func TestGetCurrentLine(t *testing.T) {
 		t.Error("getCurrentLine() failed on first line")
 	}
 
-	ts.moveDown()
+	ts.MoveDown()
 
 	if ts.getCurrentLine() != "This is a test.\n" {
 		t.Error("getCurrentLine() failed on second line after moving cursor down")
 	}
 
-	ts.moveRight().moveRight().moveRight().moveRight()
+	ts.MoveRight().MoveRight().MoveRight().MoveRight()
 
 	if ts.getCurrentLine() != "This is a test.\n" {
 		t.Error("getCurrentLine() failed on second line after moving cursor right")

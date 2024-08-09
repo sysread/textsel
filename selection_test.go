@@ -5,27 +5,79 @@ import (
 	"testing"
 )
 
+func TestResetSelection(t *testing.T) {
+	ts := NewTextSel().SetText("Hello, World!")
+
+	ts.StartSelection()
+	ts.MoveRight()
+	ts.MoveRight()
+
+	got := ts.GetSelectedText()
+	if got != "Hel" {
+		t.Errorf("StartSelection failed. Expected 'Hel', got: '%s'", got)
+	}
+
+	ts.ResetSelection()
+	got = ts.GetSelectedText()
+	if got != "" {
+		t.Errorf("ResetSelection failed. Expected '', got: '%s'", got)
+	}
+}
+
+func TestGetSelectionRange(t *testing.T) {
+	ts := NewTextSel().
+		SetText("Hello\nWorld")
+
+	ts.
+		ResetCursor().
+		MoveRight().
+		MoveRight().
+		StartSelection().
+		MoveDown().
+		MoveRight()
+
+	startRow, startCol, endRow, endCol := ts.GetSelectionRange()
+	if startRow != 0 || startCol != 2 || endRow != 1 || endCol != 3 {
+		t.Errorf("GetSelectionRange failed. Expected (0, 2, 1, 3), got (%d, %d, %d, %d)", startRow, startCol, endRow, endCol)
+	}
+
+	// Backwards selection
+	ts.
+		ResetCursor().
+		MoveDown().
+		MoveToEndOfLine().
+		StartSelection().
+		MoveUp().
+		MoveToStartOfLine()
+
+	startRow, startCol, endRow, endCol = ts.GetSelectionRange()
+
+	if startRow != 0 || startCol != 0 || endRow != 1 || endCol != 4 {
+		t.Errorf("GetSelectionRange failed. Expected (0, 0, 1, 4), got (%d, %d, %d, %d)", startRow, startCol, endRow, endCol)
+	}
+}
+
 func TestTextSelection(t *testing.T) {
 	var sem sync.WaitGroup
 
-	textSel := NewTextSel()
-	textSel.SetText("Hello, World!")
+	ts := NewTextSel()
+	ts.SetText("Hello, World!")
 
 	selectedText := ""
 	sem.Add(1)
-	textSel.SetSelectFunc(func(text string) {
+	ts.SetSelectFunc(func(text string) {
 		selectedText = text
 		sem.Done()
 	})
 
-	if textSel.cursorRow != 0 || textSel.cursorCol != 0 {
-		t.Errorf("Initial cursor position failed. Expected cursorRow = 0, cursorCol = 0, got cursorRow = %d, cursorCol = %d", textSel.cursorRow, textSel.cursorCol)
+	if ts.cursorRow != 0 || ts.cursorCol != 0 {
+		t.Errorf("Initial cursor position failed. Expected cursorRow = 0, cursorCol = 0, got cursorRow = %d, cursorCol = %d", ts.cursorRow, ts.cursorCol)
 	}
 
-	textSel.startSelection() // H
-	textSel.moveRight()   // He
-	textSel.moveRight()   // Hel
-	textSel.finishSelection()
+	ts.StartSelection() // H
+	ts.MoveRight()      // He
+	ts.MoveRight()      // Hel
+	ts.FinishSelection()
 
 	sem.Wait()
 
@@ -34,34 +86,34 @@ func TestTextSelection(t *testing.T) {
 		t.Errorf("Text selection failed. Expected %v, got %v", expected, selectedText)
 	}
 
-	if textSel.selectionStartRow != 0 {
-		t.Errorf("selectionStartRow was not reset (actual: %v)", textSel.selectionStartRow)
+	if ts.selectionStartRow != 0 {
+		t.Errorf("selectionStartRow was not reset (actual: %v)", ts.selectionStartRow)
 	}
 
-	if textSel.selectionStartCol != 0 {
-		t.Errorf("selectionStartCol was not reset (actual: %v)", textSel.selectionStartCol)
+	if ts.selectionStartCol != 0 {
+		t.Errorf("selectionStartCol was not reset (actual: %v)", ts.selectionStartCol)
 	}
 
-	if textSel.selectionEndRow != 0 {
-		t.Errorf("selectionEndRow was not reset (actual: %v)", textSel.selectionEndRow)
+	if ts.selectionEndRow != 0 {
+		t.Errorf("selectionEndRow was not reset (actual: %v)", ts.selectionEndRow)
 	}
 
-	if textSel.selectionEndCol != 0 {
-		t.Errorf("selectionEndCol was not reset (actual: %v)", textSel.selectionEndCol)
+	if ts.selectionEndCol != 0 {
+		t.Errorf("selectionEndCol was not reset (actual: %v)", ts.selectionEndCol)
 	}
 }
 
 func TestSetSelectFunc(t *testing.T) {
-	textSel := NewTextSel()
-	textSel.SetText("Hello, World!")
+	ts := NewTextSel()
+	ts.SetText("Hello, World!")
 
 	var selectedText string
-	textSel.SetSelectFunc(func(text string) {
+	ts.SetSelectFunc(func(text string) {
 		selectedText = text
 	})
 
-	textSel.startSelection()
-	textSel.finishSelection()
+	ts.StartSelection()
+	ts.FinishSelection()
 
 	expected := "H"
 	if selectedText != expected {

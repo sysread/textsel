@@ -5,7 +5,7 @@ import "strings"
 // Highlights the cursor position and selected text in the widget.
 func (ts *TextSel) highlightCursor() {
 	text := ts.text
-	startRow, startCol, endRow, endCol := ts.getSelectionRange()
+	startRow, startCol, endRow, endCol := ts.GetSelectionRange()
 
 	buf := strings.Builder{}
 	sel := false

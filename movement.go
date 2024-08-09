@@ -1,17 +1,33 @@
 package textsel
 
 // Resets the cursor position to the beginning of the text.
-func (ts *TextSel) resetCursor() *TextSel {
-	ts.cursorRow = 0
-	ts.cursorCol = 0
+func (ts *TextSel) ResetCursor() *TextSel {
+	ts.SetCursorPosition(0, 0)
+	ts.ResetSelection()
+	return ts
+}
+
+func (ts *TextSel) SetCursorPosition(row int, col int) *TextSel {
+	ts.cursorRow = row
+	ts.cursorCol = col
+
+	if ts.isSelecting {
+		ts.selectionEndRow = ts.cursorRow
+		ts.selectionEndCol = ts.cursorCol
+	}
 
 	ts.highlightCursor()
 
 	return ts
 }
 
+// Returns the current cursor position as row and column.
+func (ts *TextSel) GetCursorPosition() (int, int) {
+	return ts.cursorRow, ts.cursorCol
+}
+
 // Moves the cursor up by one row.
-func (ts *TextSel) moveUp() *TextSel {
+func (ts *TextSel) MoveUp() *TextSel {
 	if ts.cursorRow > 0 {
 		ts.cursorRow--
 
@@ -36,7 +52,7 @@ func (ts *TextSel) moveUp() *TextSel {
 }
 
 // Moves the cursor down by one row.
-func (ts *TextSel) moveDown() *TextSel {
+func (ts *TextSel) MoveDown() *TextSel {
 	if ts.cursorRow < ts.lastRow() {
 		ts.cursorRow++
 
@@ -61,8 +77,8 @@ func (ts *TextSel) moveDown() *TextSel {
 	return ts
 }
 
-// Moves the cursor left by one column.
-func (ts *TextSel) moveLeft() *TextSel {
+// Moves the cursor left by one column, wrapping to the previous row if necessary.
+func (ts *TextSel) MoveLeft() *TextSel {
 	if ts.cursorCol > 0 {
 		ts.cursorCol--
 	} else if ts.cursorRow > 0 {
@@ -80,8 +96,8 @@ func (ts *TextSel) moveLeft() *TextSel {
 	return ts
 }
 
-// Moves the cursor right by one column.
-func (ts *TextSel) moveRight() *TextSel {
+// Moves the cursor right by one column, wrapping to the next row if necessary.
+func (ts *TextSel) MoveRight() *TextSel {
 	if ts.cursorCol < len(ts.getCurrentLine())-1 {
 		ts.cursorCol++
 	} else if ts.cursorRow < ts.lastRow() {
@@ -100,7 +116,7 @@ func (ts *TextSel) moveRight() *TextSel {
 }
 
 // Moves the cursor to the start of the current line.
-func (ts *TextSel) moveToStartOfLine() *TextSel {
+func (ts *TextSel) MoveToStartOfLine() *TextSel {
 	ts.cursorCol = 0
 
 	if ts.isSelecting {
@@ -113,7 +129,7 @@ func (ts *TextSel) moveToStartOfLine() *TextSel {
 }
 
 // Moves the cursor to the end of the current line.
-func (ts *TextSel) moveToEndOfLine() *TextSel {
+func (ts *TextSel) MoveToEndOfLine() *TextSel {
 	ts.cursorCol = len(ts.getCurrentLine()) - 1
 
 	if ts.isSelecting {

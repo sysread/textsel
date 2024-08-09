@@ -71,8 +71,8 @@ func NewTextSel() *TextSel {
 		go ts.highlightCursor()
 	})
 
-	ts.resetCursor()
-	ts.resetSelection()
+	ts.ResetCursor()
+	ts.ResetSelection()
 
 	return ts
 }
@@ -105,8 +105,8 @@ func (ts *TextSel) SetText(text string) *TextSel {
 	ts.TextView.SetText(text)
 	ts.text = ts.TextView.GetText(false)
 
-	ts.resetCursor()
-	ts.resetSelection()
+	ts.ResetCursor()
+	ts.ResetSelection()
 
 	return ts
 }
@@ -115,31 +115,31 @@ func (ts *TextSel) SetText(text string) *TextSel {
 func (ts *TextSel) handleKeyEvents(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyUp:
-		ts.moveUp()
+		ts.MoveUp()
 	case tcell.KeyDown:
-		ts.moveDown()
+		ts.MoveDown()
 	case tcell.KeyLeft:
-		ts.moveLeft()
+		ts.MoveLeft()
 	case tcell.KeyRight:
-		ts.moveRight()
+		ts.MoveRight()
 	case tcell.KeyEnter:
-		ts.finishSelection()
+		ts.FinishSelection()
 	case tcell.KeyRune:
 		switch event.Rune() {
 		case ' ':
-			ts.startSelection()
+			ts.StartSelection()
 		case 'k':
-			ts.moveUp()
+			ts.MoveUp()
 		case 'j':
-			ts.moveDown()
+			ts.MoveDown()
 		case 'h':
-			ts.moveLeft()
+			ts.MoveLeft()
 		case 'l':
-			ts.moveRight()
+			ts.MoveRight()
 		case '^':
-			ts.moveToStartOfLine()
+			ts.MoveToStartOfLine()
 		case '$':
-			ts.moveToEndOfLine()
+			ts.MoveToEndOfLine()
 		}
 	}
 

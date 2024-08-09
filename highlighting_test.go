@@ -35,7 +35,7 @@ func TestHighlightCursor(t *testing.T) {
 	}
 
 	// Test Case 1: Cursor at the beginning
-	ts.SetText("Hello World").resetCursor().highlightCursor()
+	ts.SetText("Hello World").ResetCursor().highlightCursor()
 	expectedOutput1 := "[black:white:-]H[white:black:]ello World"
 	actualOutput1 := ts.TextView.GetText(false)
 
@@ -45,12 +45,12 @@ func TestHighlightCursor(t *testing.T) {
 
 	// Test Case 2: Cursor at the end
 	ts.SetText("Hello\nWorld").
-		resetCursor().
-		moveDown().
-		moveRight().
-		moveRight().
-		moveRight().
-		moveRight().
+		ResetCursor().
+		MoveDown().
+		MoveRight().
+		MoveRight().
+		MoveRight().
+		MoveRight().
 		highlightCursor()
 
 	// note extra space at end of line; it is used to make the cursor visible
@@ -63,13 +63,13 @@ func TestHighlightCursor(t *testing.T) {
 
 	// Test Case 3: Selection highlighting
 	ts.SetText("Hello\nWorld").
-		resetCursor().
-		startSelection().
-		moveRight().
-		moveRight().
-		moveRight().
-		moveRight().
-		moveRight().
+		ResetCursor().
+		StartSelection().
+		MoveRight().
+		MoveRight().
+		MoveRight().
+		MoveRight().
+		MoveRight().
 		highlightCursor()
 
 	// note extra space at end of line; it is used to make the cursor visible
