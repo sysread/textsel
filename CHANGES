@@ -1,3 +1,6 @@
+# v0.1.7 (2024-08-09)
+- Add movement methods to jump to beginning and final lines
+
 # v0.1.6 (2024-08-09)
 - Expose a number of additional control methods
 - Restructure code and improve test coverage

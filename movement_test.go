@@ -174,3 +174,39 @@ func TestMoveToStartOfLine(t *testing.T) {
 		t.Errorf("MoveToStartOfLine failed to stop at BOL. Expected cursorRow = 1, cursorCol = 0, got = %d, %d", row, col)
 	}
 }
+
+func TestMoveToFirstLine(t *testing.T) {
+	ts := NewTextSel().SetText("Hello\nWorld\n")
+
+	ts.MoveRight().MoveDown().MoveToFirstLine()
+	row, col := ts.GetCursorPosition()
+	if row != 0 || col != 1 {
+		t.Errorf("MoveToFirstLine failed. Expected cursorRow = 0, cursorCol = 1, got = %d, %d", row, col)
+	}
+
+	ts.ResetCursor()
+	ts.SetText("How\nnow brown bureaucrat")
+	ts.MoveDown().MoveToEndOfLine().MoveToFirstLine()
+	row, col = ts.GetCursorPosition()
+	if row != 0 || col != 3 {
+		t.Errorf("MoveToFirstLine failed when first line shorter than current cursor position. Expected cursorRow = 0, cursorCol = 3, got = %d, %d", row, col)
+	}
+}
+
+func TestMoveToLastLine(t *testing.T) {
+	ts := NewTextSel().SetText("Hello\nWorld\n")
+
+	ts.MoveRight().MoveToLastLine()
+	row, col := ts.GetCursorPosition()
+	if row != 1 || col != 1 {
+		t.Errorf("MoveToLastLine failed. Expected cursorRow = 1, cursorCol = 1, got = %d, %d", row, col)
+	}
+
+	ts.ResetCursor()
+	ts.SetText("How now brown bureaucrat\nFnord")
+	ts.MoveToEndOfLine().MoveToLastLine()
+	row, col = ts.GetCursorPosition()
+	if row != 1 || col != 4 {
+		t.Errorf("MoveToLastLine failed when last line shorter than current cursor position. Expected cursorRow = 1, cursorCol = 4, got = %d, %d", row, col)
+	}
+}

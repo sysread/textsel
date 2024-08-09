@@ -140,3 +140,41 @@ func (ts *TextSel) MoveToEndOfLine() *TextSel {
 
 	return ts
 }
+
+// Moves the cursor to the first line of the text. The current column is
+// preserved if it is within the bounds of the first line. Otherwise, the
+// cursor is placed at the end of the first line.
+func (ts *TextSel) MoveToFirstLine() *TextSel {
+	ts.cursorRow = 0
+
+	if ts.isSelecting {
+		ts.selectionEndRow = ts.cursorRow
+	}
+
+	if ts.cursorCol > len(ts.getCurrentLine()) {
+		ts.MoveToEndOfLine()
+	}
+
+	ts.highlightCursor()
+
+	return ts
+}
+
+// Moves the cursor to the last line of the text. The current column is
+// preserved if it is within the bounds of the last line. Otherwise, the
+// cursor is placed at the end of the last line.
+func (ts *TextSel) MoveToLastLine() *TextSel {
+	ts.cursorRow = ts.lastRow()
+
+	if ts.isSelecting {
+		ts.selectionEndRow = ts.cursorRow
+	}
+
+	if ts.cursorCol > len(ts.getCurrentLine()) {
+		ts.MoveToEndOfLine()
+	}
+
+	ts.highlightCursor()
+
+	return ts
+}

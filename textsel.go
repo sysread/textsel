@@ -101,7 +101,6 @@ func (ts *TextSel) GetText(stripFormatting bool) string {
 //
 //	textSel.SetText("New text content")
 func (ts *TextSel) SetText(text string) *TextSel {
-	//ts.text = text
 	ts.TextView.SetText(text)
 	ts.text = ts.TextView.GetText(false)
 
