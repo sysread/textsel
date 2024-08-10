@@ -2,8 +2,8 @@ package textsel
 
 // Resets the cursor position to the beginning of the text.
 func (ts *TextSel) ResetCursor() *TextSel {
-	ts.SetCursorPosition(0, 0)
 	ts.ResetSelection()
+	ts.SetCursorPosition(0, 0)
 	return ts
 }
 

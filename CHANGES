@@ -1,3 +1,6 @@
+# v0.1.8 (2024-08-10)
+- Fix overflow when resetting cursor position after setting text
+
 # v0.1.7 (2024-08-09)
 - Add movement methods to jump to beginning and final lines
 

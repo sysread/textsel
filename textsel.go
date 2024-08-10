@@ -103,10 +103,7 @@ func (ts *TextSel) GetText(stripFormatting bool) string {
 func (ts *TextSel) SetText(text string) *TextSel {
 	ts.TextView.SetText(text)
 	ts.text = ts.TextView.GetText(false)
-
 	ts.ResetCursor()
-	ts.ResetSelection()
-
 	return ts
 }
 

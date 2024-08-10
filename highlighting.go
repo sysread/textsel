@@ -33,12 +33,16 @@ func (ts *TextSel) highlightCursor() {
 				buf.WriteString(match)
 			}
 
-			// Adjust index to skip the matched format code
-			idx += len(match)
-
 			// Parse the format code into its components and save them
 			// for later use.
 			formatCode = formatCode.update(match)
+
+			// Adjust index to skip the matched format code
+			idx += len(match)
+
+			if idx >= len(text) {
+				break
+			}
 		}
 
 		// Now that we've dealt with any leading format tags, we can get the
